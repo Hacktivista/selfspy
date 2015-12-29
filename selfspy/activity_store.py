@@ -30,7 +30,7 @@ else:
     from selfspy import sniff_x as sniffer
 
 from selfspy import models
-from selfspy.models import Process, Window, Geometry, Click, Keys
+from selfspy.models import Tag, Process, Window, Geometry, Click, Keys
 
 
 SKIP_MODIFIERS = {"", "Shift_L", "Control_L", "Super_L", "Alt_L", "Super_R", "Control_R", "Shift_R", "[65027]"}  # [65027] is AltGr in X for some ungodly reason.
@@ -54,13 +54,14 @@ class KeyPress:
 
 
 class ActivityStore:
-    def __init__(self, db_name, encrypter=None, store_text=True, repeat_char=True):
+    def __init__(self, db_name, encrypter=None, store_text=True, repeat_char=True, tag_name=None):
         self.session_maker = models.initialize(db_name)
 
         models.ENCRYPTER = encrypter
 
         self.store_text = store_text
         self.repeat_char = repeat_char
+        self.tag_name = unicode(tag_name)
         self.curtext = u""
 
         self.key_presses = []
@@ -89,6 +90,16 @@ class ActivityStore:
 
     def run(self):
         self.session = self.session_maker()
+
+        # TODO: Check this is really needed (specially check for last line)
+        self.current_tag = self.session.query(
+            Tag
+        ).filter_by(
+            name=self.tag_name
+        ).scalar()
+        if not self.current_tag:
+            self.current_tag = Tag(self.tag_name)
+            self.session.add(self.current_tag)
 
         self.sniffer = sniffer.Sniffer()
         self.sniffer.screen_hook = self.got_screen_change
@@ -199,6 +210,7 @@ class ActivityStore:
                                   timings,
                                   nrkeys,
                                   self.started,
+                                  self.current_tag.id,
                                   self.current_window.proc_id,
                                   self.current_window.win_id,
                                   self.current_window.geo_id))
@@ -236,6 +248,7 @@ class ActivityStore:
                                True,
                                x, y,
                                len(self.mouse_path),
+                               self.current_tag.id,
                                self.current_window.proc_id,
                                self.current_window.win_id,
                                self.current_window.geo_id))

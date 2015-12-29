@@ -49,6 +49,16 @@ class SpookMixin(object):
     created_at = Column(DateTime, default=datetime.datetime.now, index=True)
 
 
+class Tag(SpookMixin, Base):
+    name = Column(Unicode, index=True, unique=True)
+
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return "<Tag '%s'>" % self.name
+
+
 class Process(SpookMixin, Base):
     name = Column(Unicode, index=True, unique=True)
 
@@ -98,6 +108,9 @@ class Click(SpookMixin, Base):
     y = Column(Integer, nullable=False)
     nrmoves = Column(Integer, nullable=False)
 
+    tag_id = Column(Integer, ForeignKey('tag.id'), nullable=True)
+    tag = relationship("Tag", backref=backref('clicks'))
+
     process_id = Column(Integer, ForeignKey('process.id'), nullable=False, index=True)
     process = relationship("Process", backref=backref('clicks'))
 
@@ -107,13 +120,14 @@ class Click(SpookMixin, Base):
     geometry_id = Column(Integer, ForeignKey('geometry.id'), nullable=False)
     geometry = relationship("Geometry", backref=backref('clicks'))
 
-    def __init__(self, button, press, x, y, nrmoves, process_id, window_id, geometry_id):
+    def __init__(self, button, press, x, y, nrmoves, tag_id, process_id, window_id, geometry_id):
         self.button = button
         self.press = press
         self.x = x
         self.y = y
         self.nrmoves = nrmoves
 
+        self.tag_id = tag_id
         self.process_id = process_id
         self.window_id = window_id
         self.geometry_id = geometry_id
@@ -151,6 +165,9 @@ class Keys(SpookMixin, Base):
     text = Column(Binary, nullable=False)
     started = Column(DateTime, nullable=False)
 
+    tag_id = Column(Integer, ForeignKey('tag.id'), nullable=True)
+    tag = relationship("Tag", backref=backref('keys'))
+
     process_id = Column(Integer, ForeignKey('process.id'), nullable=False, index=True)
     process = relationship("Process", backref=backref('keys'))
 
@@ -165,7 +182,7 @@ class Keys(SpookMixin, Base):
     keys = Column(Binary)
     timings = Column(Binary)
 
-    def __init__(self, text, keys, timings, nrkeys, started, process_id, window_id, geometry_id):
+    def __init__(self, text, keys, timings, nrkeys, started, tag_id, process_id, window_id, geometry_id):
         ztimings = zlib.compress(json.dumps(timings))
 
         self.encrypt_text(text)
@@ -175,6 +192,7 @@ class Keys(SpookMixin, Base):
         self.timings = ztimings
         self.started = started
 
+        self.tag_id = tag_id
         self.process_id = process_id
         self.window_id = window_id
         self.geometry_id = geometry_id
